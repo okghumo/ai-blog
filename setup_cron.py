@@ -52,7 +52,14 @@ def _build_cron_line() -> str:
         )
         sys.exit(1)
 
-    command = f"cd {PROJECT_ROOT} && {sys.executable} generate_and_email.py >> {LOG_FILE} 2>&1"
+    # On a non-zero exit, chain a standalone failure alert. cron_failure_alert.py
+    # deliberately imports nothing from `src`, so it still fires even when `src`
+    # itself is the thing that's broken (see the Nov 2026 incident: a deleted
+    # src/ went undetected for 5 days because nothing could report the crash).
+    command = (
+        f"cd {PROJECT_ROOT} && {sys.executable} generate_and_email.py >> {LOG_FILE} 2>&1 "
+        f"|| {sys.executable} cron_failure_alert.py $? >> {LOG_FILE} 2>&1"
+    )
     return f"{schedule} {command} {CRON_MARKER}"
 
 
